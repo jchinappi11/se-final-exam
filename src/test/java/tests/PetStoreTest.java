@@ -6,6 +6,7 @@ import animals.petstore.pet.attributes.Gender;
 import animals.petstore.pet.attributes.Skin;
 import animals.petstore.pet.types.Cat;
 import animals.petstore.pet.types.Dog;
+import animals.petstore.pet.types.Bird;
 import animals.petstore.store.DuplicatePetStoreRecordException;
 import animals.petstore.store.PetNotFoundSaleException;
 import animals.petstore.store.PetStore;
@@ -36,7 +37,7 @@ public class PetStoreTest {
     @Test
     @DisplayName("Inventory Count Test")
     public void validateInventory() {
-        assertEquals(5, petStore.getPetsForSale().size(), "Inventory counts are off!");
+        assertEquals(7, petStore.getPetsForSale().size(), "Inventory counts are off!");
     }
 
     @Test
@@ -211,6 +212,115 @@ public class PetStoreTest {
 
         newPetStore.initAddDuplicateItem(additionalDog);
 
-        assertEquals(6, newPetStore.getPetsForSale().size(), "Expected 6 pets in inventory");
+        assertEquals(8, newPetStore.getPetsForSale().size(), "Expected 6 pets in inventory");
+    }
+
+
+// bird tests
+
+    @Test
+    @DisplayName("Sale of Cardinal Bird Remove Item Test")
+    public void cardinalBirdSoldTest() throws DuplicatePetStoreRecordException, PetNotFoundSaleException {
+        int inventorySize = petStore.getPetsForSale().size() - 1;
+        Bird cardinal = new Bird(AnimalType.DOMESTIC, Skin.FEATHERS, Gender.MALE, Breed.CARDINAL,
+                new BigDecimal("45.00"), 1);
+
+        // Validation
+        Bird soldBird = (Bird) petStore.soldPetItem(cardinal);
+        assertEquals(inventorySize, petStore.getPetsForSale().size(), "Expected inventory does not match actual");
+        assertEquals(cardinal.getPetStoreId(), soldBird.getPetStoreId(), "The bird items should be identical");
+        assertEquals(Breed.CARDINAL, soldBird.getBreed(), "Breed should be CARDINAL");
+    }
+
+    @Test
+    @DisplayName("Sale of Blue Jay Bird Remove Item Test")
+    public void blueJayBirdSoldTest() throws DuplicatePetStoreRecordException, PetNotFoundSaleException {
+        int inventorySize = petStore.getPetsForSale().size() - 1;
+        Bird blueJay = new Bird(AnimalType.DOMESTIC, Skin.FEATHERS, Gender.FEMALE, Breed.BLUE_JAY,
+                new BigDecimal("55.00"), 2);
+
+        // Validation
+        Bird soldBird = (Bird) petStore.soldPetItem(blueJay);
+        assertEquals(inventorySize, petStore.getPetsForSale().size(), "Expected inventory does not match actual");
+        assertEquals(blueJay.getPetStoreId(), soldBird.getPetStoreId(), "The bird items should be identical");
+    }
+
+    @Test
+    @DisplayName("Bird Duplicate Record Exception Test")
+    public void birdDupRecordExceptionTest() {
+        petStore.addPetInventoryItem(new Bird(AnimalType.DOMESTIC, Skin.FEATHERS, Gender.MALE, Breed.CARDINAL,
+                new BigDecimal("45.00"), 1));
+        Bird cardinal = new Bird(AnimalType.DOMESTIC, Skin.FEATHERS, Gender.MALE, Breed.CARDINAL,
+                new BigDecimal("45.00"), 1);
+
+        // Validation
+        String expectedMessage = "Duplicate Bird record store id [1]";
+        Exception exception = assertThrows(DuplicatePetStoreRecordException.class, () -> {
+            petStore.soldPetItem(cardinal);
+        });
+        assertEquals(expectedMessage, exception.getMessage(), "DuplicateBirdRecordExceptionTest was NOT encountered!");
+    }
+
+    @Test
+    @DisplayName("Bird Not Found Sale Exception Test")
+    public void birdNotFoundSaleExceptionTest() {
+        Bird wildBird = new Bird(AnimalType.WILD, Skin.FEATHERS, Gender.MALE, Breed.HAWK);
+
+        // Validation - bird with petStoreId = 0 should throw exception
+        String expectedMessage = "The Pet is not part of the pet store!!";
+        Exception exception = assertThrows(PetNotFoundSaleException.class, () -> {
+            petStore.soldPetItem(wildBird);
+        });
+        assertEquals(expectedMessage, exception.getMessage(), "PetNotFoundSaleException was NOT encountered!");
+    }
+
+    @TestFactory
+    @DisplayName("Sale of Cardinal Bird Remove Item Test with Dynamic Tests")
+    public Stream<DynamicNode> cardinalBirdSoldTest2() throws DuplicatePetStoreRecordException, PetNotFoundSaleException {
+        int inventorySize = petStore.getPetsForSale().size() - 1;
+
+        Bird cardinal = new Bird(AnimalType.DOMESTIC, Skin.FEATHERS, Gender.MALE, Breed.CARDINAL,
+                new BigDecimal("45.00"), 1);
+        Bird removedItem = (Bird) petStore.soldPetItem(cardinal);
+
+        // Validation
+        List<DynamicNode> nodes = new ArrayList<>();
+        List<DynamicTest> dynamicTests = Arrays.asList(
+                dynamicTest("Inventory Check Size Test ", () -> assertEquals(inventorySize,
+                        petStore.getPetsForSale().size())),
+                dynamicTest("The bird objects match ", () -> assertEquals(cardinal.toString(),
+                        removedItem.toString())),
+                dynamicTest("Bird breed is CARDINAL", () -> assertEquals(Breed.CARDINAL,
+                        removedItem.getBreed()))
+        );
+        nodes.add(dynamicContainer("Bird Item Test", dynamicTests));
+
+        return nodes.stream();
+    }
+
+    @Test
+    @DisplayName("Add Bird to Inventory Test")
+    public void addBirdToInventoryTest() {
+        int initialSize = petStore.getPetsForSale().size();
+        Bird sparrow = new Bird(AnimalType.DOMESTIC, Skin.FEATHERS, Gender.MALE, Breed.SPARROW,
+                new BigDecimal("30.00"), 3);
+
+        petStore.addPetInventoryItem(sparrow);
+
+        assertEquals(initialSize + 1, petStore.getPetsForSale().size(),
+                "Inventory size should increase by 1");
+    }
+
+    @Test
+    @DisplayName("Bird Not Found in Inventory Exception Test")
+    public void birdNotFoundInInventoryExceptionTest() {
+        Bird nonExistentBird = new Bird(AnimalType.DOMESTIC, Skin.FEATHERS, Gender.MALE, Breed.HAWK,
+                new BigDecimal("150.00"), 999);
+
+        String expectedMessage = "Duplicate Bird record store id [999]";
+        Exception exception = assertThrows(DuplicatePetStoreRecordException.class, () -> {
+            petStore.soldPetItem(nonExistentBird);
+        });
+        assertEquals(expectedMessage, exception.getMessage(), "DuplicatePetStoreRecordException was NOT encountered!");
     }
 }
